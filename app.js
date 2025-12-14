@@ -4,8 +4,9 @@ class SavingsApp {
         this.cards = this.loadData('cards') || [];
         this.expenses = this.loadData('expenses') || [];
         this.incomes = this.loadData('incomes') || [];
+        this.fixedExpenses = this.loadData('fixedExpenses') || [];
         this.goal = this.loadData('goal') || null;
-        this.settings = this.loadData('settings') || { theme: 'light', notificationTime: '08:00' };
+        this.settings = this.loadData('settings') || { theme: 'light', notificationTime: '08:00', initialBalance: 0 };
         this.currentMonth = new Date();
         this.selectedDate = new Date();
         this.currentEditingCardId = null;
@@ -21,6 +22,7 @@ class SavingsApp {
         this.updatePaymentMethodOptions();
         this.renderDashboard();
         this.renderCardsList();
+        this.renderFixedExpensesList();
         this.renderCalendar();
         this.renderGoalProgress();
     }
@@ -58,6 +60,11 @@ class SavingsApp {
         document.getElementById('closeCardModal').addEventListener('click', () => this.closeCardModal());
         document.getElementById('cardForm').addEventListener('submit', (e) => this.saveCard(e));
 
+        // 固定出費管理
+        document.getElementById('addFixedExpenseBtn').addEventListener('click', () => this.openFixedExpenseModal());
+        document.getElementById('closeFixedExpenseModal').addEventListener('click', () => this.closeFixedExpenseModal());
+        document.getElementById('fixedExpenseForm').addEventListener('submit', (e) => this.saveFixedExpense(e));
+
         // 収入・支出入力
         document.getElementById('incomeForm').addEventListener('submit', (e) => this.saveIncome(e));
         document.getElementById('expenseForm').addEventListener('submit', (e) => this.saveExpense(e));
@@ -79,6 +86,9 @@ class SavingsApp {
         // 通知
         document.getElementById('enableNotifications').addEventListener('click', () => this.enableNotifications());
 
+        // 初期残高設定
+        document.getElementById('saveInitialBalance').addEventListener('click', () => this.saveInitialBalance());
+
         // データ管理
         document.getElementById('exportData').addEventListener('click', () => this.exportData());
         document.getElementById('importData').addEventListener('click', () => document.getElementById('importFile').click());
@@ -87,6 +97,9 @@ class SavingsApp {
         // モーダル外クリックで閉じる
         document.getElementById('cardModal').addEventListener('click', (e) => {
             if (e.target.id === 'cardModal') this.closeCardModal();
+        });
+        document.getElementById('fixedExpenseModal').addEventListener('click', (e) => {
+            if (e.target.id === 'fixedExpenseModal') this.closeFixedExpenseModal();
         });
     }
 
@@ -103,7 +116,10 @@ class SavingsApp {
         if (pageName === 'expense') this.renderRecentExpenses();
         if (pageName === 'calendarPage') this.renderCalendar();
         if (pageName === 'goalPage') this.renderGoalProgress();
-        if (pageName === 'settings') this.renderCardsList();
+        if (pageName === 'settings') {
+            this.renderCardsList();
+            this.renderFixedExpensesList();
+        }
     }
 
     // テーマ切り替え
@@ -188,32 +204,93 @@ class SavingsApp {
 
         if (this.cards.length === 0) {
             container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💳</div><div>カードを登録してください</div></div>';
-            return;
+        } else {
+            container.innerHTML = this.cards.map(card => `
+                <div class="card-item">
+                    <div>
+                        <div class="card-badge" style="background: ${card.color}20; color: ${card.color};">
+                            ${card.name}
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">
+                            締め日: ${card.closingDay === 'month-end' ? '月末' : card.closingDay + '日'} |
+                            引き落とし: ${card.paymentDay}日
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-small btn-secondary" onclick="app.openCardModal('${card.id}')" style="margin-right: 8px;">編集</button>
+                        <button class="delete-btn" onclick="app.deleteCard('${card.id}')">削除</button>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        container.innerHTML = this.cards.map(card => `
-            <div class="card-item">
-                <div>
-                    <div class="card-badge" style="background: ${card.color}20; color: ${card.color};">
-                        ${card.name}
-                    </div>
-                    <div style="font-size: 14px; color: var(--text-secondary);">
-                        締め日: ${card.closingDay === 'month-end' ? '月末' : card.closingDay + '日'} |
-                        引き落とし: ${card.paymentDay}日
-                    </div>
-                </div>
-                <div>
-                    <button class="btn btn-small btn-secondary" onclick="app.openCardModal('${card.id}')" style="margin-right: 8px;">編集</button>
-                    <button class="delete-btn" onclick="app.deleteCard('${card.id}')">削除</button>
-                </div>
-            </div>
-        `).join('');
+        // 初期残高の値を設定
+        document.getElementById('initialBalance').value = this.settings.initialBalance || 0;
     }
 
     updatePaymentMethodOptions() {
         const select = document.getElementById('paymentMethod');
         select.innerHTML = '<option value="cash">現金</option>' +
             this.cards.map(card => `<option value="${card.id}">${card.name}</option>`).join('');
+    }
+
+    // 固定出費管理
+    openFixedExpenseModal() {
+        document.getElementById('fixedExpenseModal').classList.add('active');
+    }
+
+    closeFixedExpenseModal() {
+        document.getElementById('fixedExpenseModal').classList.remove('active');
+        document.getElementById('fixedExpenseForm').reset();
+    }
+
+    saveFixedExpense(e) {
+        e.preventDefault();
+
+        const fixedExpense = {
+            id: 'fixed_' + Date.now(),
+            name: document.getElementById('fixedExpenseName').value,
+            amount: parseInt(document.getElementById('fixedExpenseAmount').value),
+            day: parseInt(document.getElementById('fixedExpenseDay').value)
+        };
+
+        this.fixedExpenses.push(fixedExpense);
+        this.saveData('fixedExpenses', this.fixedExpenses);
+        this.closeFixedExpenseModal();
+        this.renderFixedExpensesList();
+        this.renderDashboard();
+    }
+
+    deleteFixedExpense(fixedExpenseId) {
+        if (!confirm('この固定出費を削除しますか？')) return;
+
+        this.fixedExpenses = this.fixedExpenses.filter(f => f.id !== fixedExpenseId);
+        this.saveData('fixedExpenses', this.fixedExpenses);
+        this.renderFixedExpensesList();
+        this.renderDashboard();
+    }
+
+    renderFixedExpensesList() {
+        const container = document.getElementById('fixedExpensesList');
+
+        if (this.fixedExpenses.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏠</div><div>固定出費を登録してください</div></div>';
+            return;
+        }
+
+        container.innerHTML = this.fixedExpenses.map(expense => `
+            <div class="card-item">
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">${expense.name}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        毎月${expense.day}日 | ¥${expense.amount.toLocaleString()}
+                    </div>
+                </div>
+                <div>
+                    <button class="delete-btn" onclick="app.deleteFixedExpense('${expense.id}')">削除</button>
+                </div>
+            </div>
+        `).join('');
     }
 
     // 引き落とし日計算
@@ -441,7 +518,10 @@ class SavingsApp {
             return withdrawalDate < today;
         }).reduce((sum, e) => sum + e.amount, 0);
 
-        const currentBalance = allIncome - cashExpenses - withdrawnCardExpenses;
+        // 固定出費の累積計算（今月まで）
+        const fixedExpensesTotal = this.calculateFixedExpensesUntilToday();
+
+        const currentBalance = (this.settings.initialBalance || 0) + allIncome - cashExpenses - withdrawnCardExpenses - fixedExpensesTotal;
 
         // 次回の引き落とし額を計算（今日以降で最も近い引き落とし日）
         const nextWithdrawal = this.calculateNextWithdrawal();
@@ -483,6 +563,123 @@ class SavingsApp {
 
         // モチベーションメッセージ
         this.renderMotivationMessage(cashSpent, cardSpent, nextWithdrawal);
+
+        // 今日使える額を計算
+        this.renderTodayBudget(currentBalance);
+    }
+
+    // 今日使える額を計算
+    renderTodayBudget(currentBalance) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 今月末までの日数
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const daysLeft = Math.ceil((lastDayOfMonth - today) / (1000 * 60 * 60 * 24)) + 1; // 今日を含む
+
+        // 今月末までの固定出費
+        const futureFixedExpenses = this.calculateFixedExpensesForPeriod(today, lastDayOfMonth);
+
+        // 今月末までの引き落とし予定
+        const futureWithdrawals = this.expenses.filter(e => {
+            if (!e.withdrawalDate) return false;
+            const withdrawalDate = new Date(e.withdrawalDate);
+            return withdrawalDate >= today && withdrawalDate <= lastDayOfMonth;
+        }).reduce((sum, e) => sum + e.amount, 0);
+
+        // 使える残高 = 現在の残高 - 今月末までの固定出費 - 今月末までの引き落とし予定
+        const availableBalance = currentBalance - futureFixedExpenses - futureWithdrawals;
+
+        // 1日あたりの基本予算
+        const dailyBaseBudget = Math.floor(availableBalance / daysLeft);
+
+        // 今月1日からの経過日数（今日を含まない）
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const daysPassed = Math.floor((today - firstDayOfMonth) / (1000 * 60 * 60 * 24));
+
+        // 過去の日数分の予定予算
+        const pastBudget = dailyBaseBudget * daysPassed;
+
+        // 実際に使った額（今月の現金支出のみ、今日は含まない）
+        const actualSpent = this.expenses.filter(e => {
+            if (e.paymentMethod !== 'cash') return false;
+            const expenseDate = new Date(e.date);
+            return expenseDate >= firstDayOfMonth && expenseDate < today;
+        }).reduce((sum, e) => sum + e.amount, 0);
+
+        // 持ち越し分 = 過去の予算 - 実際に使った額
+        const carryOver = pastBudget - actualSpent;
+
+        // 今日使える額 = 1日の基本予算 + 持ち越し分
+        const todayBudget = dailyBaseBudget + carryOver;
+
+        // 表示
+        document.getElementById('todayBudget').textContent = '¥' + Math.max(0, todayBudget).toLocaleString();
+
+        let details = `1日の基本予算: ¥${dailyBaseBudget.toLocaleString()}`;
+        if (carryOver > 0) {
+            details += ` + 持ち越し: ¥${carryOver.toLocaleString()}`;
+        } else if (carryOver < 0) {
+            details += ` - 使いすぎ: ¥${Math.abs(carryOver).toLocaleString()}`;
+        }
+        details += ` (残り${daysLeft}日)`;
+
+        document.getElementById('budgetDetails').textContent = details;
+    }
+
+    // 固定出費の累積計算（今日まで）
+    calculateFixedExpensesUntilToday() {
+        if (this.fixedExpenses.length === 0) return 0;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 収入または支出の最も古い日付を取得（アプリの開始日とする）
+        const allDates = [
+            ...this.incomes.map(i => new Date(i.date)),
+            ...this.expenses.map(e => new Date(e.date))
+        ];
+
+        if (allDates.length === 0) {
+            // データがない場合は今月のみ計算
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            return this.calculateFixedExpensesForPeriod(firstDayOfMonth, today);
+        }
+
+        const startDate = new Date(Math.min(...allDates));
+        startDate.setHours(0, 0, 0, 0);
+
+        return this.calculateFixedExpensesForPeriod(startDate, today);
+    }
+
+    // 期間内の固定出費を計算
+    calculateFixedExpensesForPeriod(startDate, endDate) {
+        let total = 0;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        // 開始月から終了月まで繰り返す
+        let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
+
+        while (currentDate <= end) {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            // その月の各固定出費をチェック
+            this.fixedExpenses.forEach(fixed => {
+                const expenseDate = new Date(year, month, fixed.day);
+
+                // 固定出費の日付が開始日以降かつ終了日以前なら加算
+                if (expenseDate >= start && expenseDate <= end) {
+                    total += fixed.amount;
+                }
+            });
+
+            // 次の月へ
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+
+        return total;
     }
 
     renderCardUsage(monthExpenses) {
@@ -712,6 +909,9 @@ class SavingsApp {
             const withdrawals = this.expenses.filter(e => e.withdrawalDate === dateStr);
             const hasWithdrawal = withdrawals.length > 0;
 
+            // その日の固定出費
+            const hasFixedExpense = this.fixedExpenses.some(f => f.day === day);
+
             const isToday = dateStr === new Date().toISOString().split('T')[0];
 
             const dayElement = document.createElement('div');
@@ -723,6 +923,7 @@ class SavingsApp {
             dayElement.innerHTML = `
                 <div style="font-weight: ${isToday ? '700' : '400'};">${day}</div>
                 ${hasWithdrawal ? '<div style="font-size: 10px; color: var(--danger); margin-top: 2px;">💳</div>' : ''}
+                ${hasFixedExpense ? '<div style="font-size: 10px; color: var(--warning); margin-top: 2px;">🏠</div>' : ''}
             `;
             dayElement.style.flexDirection = 'column';
             dayElement.style.gap = '0';
@@ -753,7 +954,12 @@ class SavingsApp {
         // その日の引き落とし予定
         const dayWithdrawals = this.expenses.filter(e => e.withdrawalDate === dateStr);
 
-        if (dayExpenses.length === 0 && dayIncomes.length === 0 && dayWithdrawals.length === 0) {
+        // その日の固定出費
+        const date = new Date(dateStr);
+        const dayOfMonth = date.getDate();
+        const dayFixedExpenses = this.fixedExpenses.filter(f => f.day === dayOfMonth);
+
+        if (dayExpenses.length === 0 && dayIncomes.length === 0 && dayWithdrawals.length === 0 && dayFixedExpenses.length === 0) {
             container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📝</div><div>${dateStr}<br>データなし</div></div>`;
             return;
         }
@@ -844,22 +1050,49 @@ class SavingsApp {
             `;
         }
 
+        // 固定出費を表示
+        if (dayFixedExpenses.length > 0) {
+            html += `<div style="font-weight: 600; margin-top: 16px; margin-bottom: 8px; color: var(--warning);">🏠 固定出費</div>`;
+            dayFixedExpenses.forEach(fixed => {
+                html += `
+                    <div class="expense-item" style="border-left: 3px solid var(--warning); background: var(--warning)10;">
+                        <div>
+                            <div style="font-weight: 600;">${fixed.name}</div>
+                            <div style="font-size: 14px; color: var(--text-secondary);">
+                                毎月${fixed.day}日
+                            </div>
+                        </div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--warning);">
+                            ¥${fixed.amount.toLocaleString()}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
         // 収支合計
         const totalIncome = dayIncomes.reduce((sum, i) => sum + i.amount, 0);
         const totalExpense = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
-        const netAmount = totalIncome - totalExpense;
+        const totalFixedExpense = dayFixedExpenses.reduce((sum, f) => sum + f.amount, 0);
+        const netAmount = totalIncome - totalExpense - totalFixedExpense;
 
-        if (dayIncomes.length > 0 || dayExpenses.length > 0) {
+        if (dayIncomes.length > 0 || dayExpenses.length > 0 || dayFixedExpenses.length > 0) {
             html += `
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                         <span>収入:</span>
                         <span style="color: var(--success);">+¥${totalIncome.toLocaleString()}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                         <span>支出:</span>
                         <span style="color: var(--danger);">-¥${totalExpense.toLocaleString()}</span>
                     </div>
+                    ${totalFixedExpense > 0 ? `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>固定出費:</span>
+                        <span style="color: var(--warning);">-¥${totalFixedExpense.toLocaleString()}</span>
+                    </div>
+                    ` : ''}
                     <div style="display: flex; justify-content: space-between; font-weight: 700; padding-top: 8px; border-top: 1px solid var(--border);">
                         <span>差引:</span>
                         <span style="color: ${netAmount >= 0 ? 'var(--success)' : 'var(--danger)'};">
@@ -998,12 +1231,22 @@ class SavingsApp {
         console.log('通知スケジュール設定:', notificationTime);
     }
 
+    // 初期残高設定
+    saveInitialBalance() {
+        const initialBalance = parseFloat(document.getElementById('initialBalance').value) || 0;
+        this.settings.initialBalance = initialBalance;
+        this.saveData('settings', this.settings);
+        alert('初期残高を保存しました');
+        this.renderDashboard();
+    }
+
     // データ管理
     exportData() {
         const data = {
             cards: this.cards,
             expenses: this.expenses,
             incomes: this.incomes,
+            fixedExpenses: this.fixedExpenses,
             goal: this.goal,
             settings: this.settings,
             exportDate: new Date().toISOString()
@@ -1031,12 +1274,14 @@ class SavingsApp {
                     this.cards = data.cards || [];
                     this.expenses = data.expenses || [];
                     this.incomes = data.incomes || [];
+                    this.fixedExpenses = data.fixedExpenses || [];
                     this.goal = data.goal || null;
                     this.settings = data.settings || { theme: 'light', notificationTime: '08:00' };
 
                     this.saveData('cards', this.cards);
                     this.saveData('expenses', this.expenses);
                     this.saveData('incomes', this.incomes);
+                    this.saveData('fixedExpenses', this.fixedExpenses);
                     this.saveData('goal', this.goal);
                     this.saveData('settings', this.settings);
 

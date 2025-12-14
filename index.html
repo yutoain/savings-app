@@ -464,6 +464,12 @@
         <div id="dashboard" class="page active">
             <div id="motivationMessage" class="alert alert-success" style="display: none;"></div>
 
+            <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h2 style="font-size: 16px; margin-bottom: 8px; opacity: 0.9;">今日使える額</h2>
+                <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px;" id="todayBudget">¥0</div>
+                <div style="font-size: 14px; opacity: 0.8;" id="budgetDetails">計算中...</div>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">今月の収入</div>
@@ -627,6 +633,14 @@
             </div>
 
             <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">固定出費管理</h2>
+                    <button class="btn btn-small btn-primary" id="addFixedExpenseBtn">追加</button>
+                </div>
+                <div id="fixedExpensesList"></div>
+            </div>
+
+            <div class="card">
                 <h2 class="card-title" style="margin-bottom: 16px;">通知設定</h2>
                 <div class="form-group">
                     <label class="form-label">毎朝の予算通知</label>
@@ -637,6 +651,15 @@
                     </select>
                 </div>
                 <button class="btn btn-primary" id="enableNotifications" style="width: 100%;">通知を有効にする</button>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 16px;">初期残高設定</h2>
+                <div class="form-group">
+                    <label class="form-label">初期残高（アプリ開始時の貯金額）</label>
+                    <input type="number" class="form-input" id="initialBalance" placeholder="0">
+                </div>
+                <button class="btn btn-primary" id="saveInitialBalance" style="width: 100%;">保存</button>
             </div>
 
             <div class="card">
@@ -730,6 +753,60 @@
                 <div class="form-group">
                     <label class="form-label">カラー</label>
                     <input type="color" class="form-input" id="cardColor" value="#4F46E5">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 固定出費追加/編集モーダル -->
+    <div class="modal" id="fixedExpenseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">固定出費情報</h2>
+                <button class="close-btn" id="closeFixedExpenseModal">×</button>
+            </div>
+            <form id="fixedExpenseForm">
+                <div class="form-group">
+                    <label class="form-label">項目名</label>
+                    <input type="text" class="form-input" id="fixedExpenseName" required placeholder="家賃">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">金額</label>
+                    <input type="number" class="form-input" id="fixedExpenseAmount" required placeholder="80000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">引き落とし日</label>
+                    <select class="form-select" id="fixedExpenseDay" required>
+                        <option value="1">1日</option>
+                        <option value="2">2日</option>
+                        <option value="3">3日</option>
+                        <option value="4">4日</option>
+                        <option value="5">5日</option>
+                        <option value="6">6日</option>
+                        <option value="7">7日</option>
+                        <option value="8">8日</option>
+                        <option value="9">9日</option>
+                        <option value="10">10日</option>
+                        <option value="11">11日</option>
+                        <option value="12">12日</option>
+                        <option value="13">13日</option>
+                        <option value="14">14日</option>
+                        <option value="15">15日</option>
+                        <option value="16">16日</option>
+                        <option value="17">17日</option>
+                        <option value="18">18日</option>
+                        <option value="19">19日</option>
+                        <option value="20">20日</option>
+                        <option value="21">21日</option>
+                        <option value="22">22日</option>
+                        <option value="23">23日</option>
+                        <option value="24">24日</option>
+                        <option value="25">25日</option>
+                        <option value="26">26日</option>
+                        <option value="27">27日</option>
+                        <option value="28">28日</option>
+                    </select>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">保存</button>
             </form>
