@@ -428,8 +428,8 @@ class SavingsApp {
         const allExpenses = this.expenses.reduce((sum, e) => sum + e.amount, 0);
         const currentBalance = allIncome - allExpenses;
 
-        // 次回引き落とし額を計算
-        const nextWithdrawal = this.calculateUpcomingWithdrawals(1)[0]?.amount || 0;
+        // 次回の引き落とし額を計算（今日以降で最も近い引き落とし日）
+        const nextWithdrawal = this.calculateNextWithdrawal();
 
         // 引き落とし後残高
         const afterBalance = currentBalance - nextWithdrawal;
@@ -532,6 +532,31 @@ class SavingsApp {
 
             currentAngle += sliceAngle;
         });
+    }
+
+    // 今日以降で最も近い引き落とし日の金額を計算
+    calculateNextWithdrawal() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 全ての引き落とし予定から今日以降のものを抽出
+        const futureWithdrawals = this.expenses.filter(e => {
+            if (!e.withdrawalDate) return false;
+            const withdrawalDate = new Date(e.withdrawalDate);
+            return withdrawalDate >= today;
+        });
+
+        if (futureWithdrawals.length === 0) return 0;
+
+        // 最も近い引き落とし日を見つける
+        const nextDate = futureWithdrawals.reduce((nearest, expense) => {
+            const expenseDate = new Date(expense.withdrawalDate);
+            return expenseDate < new Date(nearest) ? expense.withdrawalDate : nearest;
+        }, futureWithdrawals[0].withdrawalDate);
+
+        // その日の引き落とし額の合計
+        const nextDayWithdrawals = futureWithdrawals.filter(e => e.withdrawalDate === nextDate);
+        return nextDayWithdrawals.reduce((sum, e) => sum + e.amount, 0);
     }
 
     calculateUpcomingWithdrawals(months = 3) {
