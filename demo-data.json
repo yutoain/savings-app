@@ -15,6 +15,20 @@
       "color": "#10B981"
     }
   ],
+  "incomes": [
+    {
+      "id": "income_1",
+      "date": "2024-12-01",
+      "amount": 300000,
+      "source": "給料"
+    },
+    {
+      "id": "income_2",
+      "date": "2024-11-01",
+      "amount": 300000,
+      "source": "給料"
+    }
+  ],
   "expenses": [
     {
       "id": "expense_1",

@@ -3,6 +3,7 @@ class SavingsApp {
     constructor() {
         this.cards = this.loadData('cards') || [];
         this.expenses = this.loadData('expenses') || [];
+        this.incomes = this.loadData('incomes') || [];
         this.goal = this.loadData('goal') || null;
         this.settings = this.loadData('settings') || { theme: 'light', notificationTime: '08:00' };
         this.currentMonth = new Date();
@@ -57,7 +58,8 @@ class SavingsApp {
         document.getElementById('closeCardModal').addEventListener('click', () => this.closeCardModal());
         document.getElementById('cardForm').addEventListener('submit', (e) => this.saveCard(e));
 
-        // 支出入力
+        // 収入・支出入力
+        document.getElementById('incomeForm').addEventListener('submit', (e) => this.saveIncome(e));
         document.getElementById('expenseForm').addEventListener('submit', (e) => this.saveExpense(e));
         document.getElementById('paymentMethod').addEventListener('change', (e) => this.updateWithdrawalDate(e.target.value));
 
@@ -254,10 +256,33 @@ class SavingsApp {
         }
     }
 
-    // 支出管理
+    // 収入・支出管理
     setDefaultDate() {
         const today = new Date().toISOString().split('T')[0];
+        document.getElementById('incomeDate').value = today;
         document.getElementById('expenseDate').value = today;
+    }
+
+    saveIncome(e) {
+        e.preventDefault();
+
+        const incomeData = {
+            id: 'income_' + Date.now(),
+            date: document.getElementById('incomeDate').value,
+            amount: parseInt(document.getElementById('incomeAmount').value),
+            source: document.getElementById('incomeSource').value || '収入'
+        };
+
+        this.incomes.push(incomeData);
+        this.saveData('incomes', this.incomes);
+
+        e.target.reset();
+        this.setDefaultDate();
+
+        alert('収入を記録しました！');
+        this.renderRecentExpenses();
+        this.renderDashboard();
+        this.renderCalendar();
     }
 
     saveExpense(e) {
@@ -297,34 +322,69 @@ class SavingsApp {
         this.renderCalendar();
     }
 
+    deleteIncome(incomeId) {
+        if (!confirm('この収入を削除しますか？')) return;
+
+        this.incomes = this.incomes.filter(i => i.id !== incomeId);
+        this.saveData('incomes', this.incomes);
+
+        this.renderRecentExpenses();
+        this.renderDashboard();
+        this.renderCalendar();
+    }
+
     renderRecentExpenses() {
         const container = document.getElementById('recentExpenses');
-        const recent = this.expenses.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
 
-        if (recent.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div>支出データがありません</div></div>';
+        // 収入と支出を統合してソート
+        const allTransactions = [
+            ...this.incomes.map(i => ({...i, type: 'income'})),
+            ...this.expenses.map(e => ({...e, type: 'expense'}))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 15);
+
+        if (allTransactions.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div>取引データがありません</div></div>';
             return;
         }
 
-        container.innerHTML = recent.map(expense => {
-            const card = expense.paymentMethod === 'cash' ? null : this.cards.find(c => c.id === expense.paymentMethod);
-            return `
-                <div class="expense-item">
-                    <div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">${expense.date}</div>
-                        <div style="font-size: 14px; color: var(--text-secondary);">
-                            ${expense.category} | ${card ? card.name : '現金'}
-                            ${expense.withdrawalDate ? `<br>引き落とし: ${expense.withdrawalDate}` : ''}
+        container.innerHTML = allTransactions.map(item => {
+            if (item.type === 'income') {
+                return `
+                    <div class="expense-item" style="border-left: 3px solid var(--success);">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 4px;">${item.date}</div>
+                            <div style="font-size: 14px; color: var(--text-secondary);">
+                                ${item.source} | 収入
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="expense-amount success" style="color: var(--success);">
+                                +¥${item.amount.toLocaleString()}
+                            </div>
+                            <button class="delete-btn" onclick="app.deleteIncome('${item.id}')">×</button>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="expense-amount ${card ? 'card' : 'cash'}">
-                            ¥${expense.amount.toLocaleString()}
+                `;
+            } else {
+                const card = item.paymentMethod === 'cash' ? null : this.cards.find(c => c.id === item.paymentMethod);
+                return `
+                    <div class="expense-item" style="border-left: 3px solid var(--danger);">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 4px;">${item.date}</div>
+                            <div style="font-size: 14px; color: var(--text-secondary);">
+                                ${item.category} | ${card ? card.name : '現金'}
+                                ${item.withdrawalDate ? `<br>引き落とし: ${item.withdrawalDate}` : ''}
+                            </div>
                         </div>
-                        <button class="delete-btn" onclick="app.deleteExpense('${expense.id}')">×</button>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="expense-amount ${card ? 'card' : 'cash'}">
+                                -¥${item.amount.toLocaleString()}
+                            </div>
+                            <button class="delete-btn" onclick="app.deleteExpense('${item.id}')">×</button>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         }).join('');
     }
 
@@ -333,6 +393,14 @@ class SavingsApp {
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
+
+        // 今月の収入を計算
+        const monthIncomes = this.incomes.filter(i => {
+            const date = new Date(i.date);
+            return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+        });
+
+        const totalIncome = monthIncomes.reduce((sum, i) => sum + i.amount, 0);
 
         // 今月の支出を計算
         const monthExpenses = this.expenses.filter(e => {
@@ -346,17 +414,42 @@ class SavingsApp {
         const cardSpent = monthExpenses.filter(e => e.paymentMethod !== 'cash')
             .reduce((sum, e) => sum + e.amount, 0);
 
-        // 次回引き落とし額を計算（今月と来月）
+        // 全期間の収支から現在の残高を計算
+        const allIncome = this.incomes.reduce((sum, i) => sum + i.amount, 0);
+        const allExpenses = this.expenses.reduce((sum, e) => sum + e.amount, 0);
+        const currentBalance = allIncome - allExpenses;
+
+        // 次回引き落とし額を計算
         const nextWithdrawal = this.calculateUpcomingWithdrawals(1)[0]?.amount || 0;
 
-        // 引き落とし後残高（仮の計算）
-        const currentSavings = this.goal?.currentSavings || 0;
-        const afterBalance = currentSavings - nextWithdrawal;
+        // 引き落とし後残高
+        const afterBalance = currentBalance - nextWithdrawal;
 
+        document.getElementById('monthIncome').textContent = '¥' + totalIncome.toLocaleString();
+        document.getElementById('currentBalance').textContent = '¥' + currentBalance.toLocaleString();
         document.getElementById('cashSpent').textContent = '¥' + cashSpent.toLocaleString();
         document.getElementById('cardSpent').textContent = '¥' + cardSpent.toLocaleString();
         document.getElementById('nextWithdrawal').textContent = '¥' + nextWithdrawal.toLocaleString();
         document.getElementById('afterBalance').textContent = '¥' + afterBalance.toLocaleString();
+
+        // 残高の色を変更
+        const balanceElement = document.getElementById('currentBalance');
+        if (currentBalance > 0) {
+            balanceElement.classList.remove('danger');
+            balanceElement.classList.add('success');
+        } else {
+            balanceElement.classList.remove('success');
+            balanceElement.classList.add('danger');
+        }
+
+        const afterBalanceElement = document.getElementById('afterBalance');
+        if (afterBalance > 0) {
+            afterBalanceElement.classList.remove('danger');
+            afterBalanceElement.classList.add('success');
+        } else {
+            afterBalanceElement.classList.remove('success');
+            afterBalanceElement.classList.add('danger');
+        }
 
         // カード別使用状況
         this.renderCardUsage(monthExpenses);
@@ -747,6 +840,7 @@ class SavingsApp {
         const data = {
             cards: this.cards,
             expenses: this.expenses,
+            incomes: this.incomes,
             goal: this.goal,
             settings: this.settings,
             exportDate: new Date().toISOString()
@@ -773,11 +867,13 @@ class SavingsApp {
                 if (confirm('データをインポートしますか？現在のデータは上書きされます。')) {
                     this.cards = data.cards || [];
                     this.expenses = data.expenses || [];
+                    this.incomes = data.incomes || [];
                     this.goal = data.goal || null;
                     this.settings = data.settings || { theme: 'light', notificationTime: '08:00' };
 
                     this.saveData('cards', this.cards);
                     this.saveData('expenses', this.expenses);
+                    this.saveData('incomes', this.incomes);
                     this.saveData('goal', this.goal);
                     this.saveData('settings', this.settings);
 

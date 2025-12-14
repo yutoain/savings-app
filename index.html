@@ -466,6 +466,14 @@
 
             <div class="stats-grid">
                 <div class="stat-card">
+                    <div class="stat-label">今月の収入</div>
+                    <div class="stat-value success" id="monthIncome">¥0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">現在の残高</div>
+                    <div class="stat-value" id="currentBalance">¥0</div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-label">今月の現金支出</div>
                     <div class="stat-value" id="cashSpent">¥0</div>
                 </div>
@@ -479,7 +487,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">引き落とし後残高</div>
-                    <div class="stat-value success" id="afterBalance">¥0</div>
+                    <div class="stat-value" id="afterBalance">¥0</div>
                 </div>
             </div>
 
@@ -503,6 +511,25 @@
 
         <!-- 支出入力ページ -->
         <div id="expense" class="page">
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 20px;">収入を入力</h2>
+                <form id="incomeForm">
+                    <div class="form-group">
+                        <label class="form-label">金額</label>
+                        <input type="number" class="form-input" id="incomeAmount" required placeholder="300000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">日付</label>
+                        <input type="date" class="form-input" id="incomeDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">収入源（任意）</label>
+                        <input type="text" class="form-input" id="incomeSource" placeholder="給料">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; background: var(--success);">収入を記録</button>
+                </form>
+            </div>
+
             <div class="card">
                 <h2 class="card-title" style="margin-bottom: 20px;">支出を入力</h2>
                 <form id="expenseForm">
@@ -528,13 +555,13 @@
                         <label class="form-label">カテゴリ（任意）</label>
                         <input type="text" class="form-input" id="expenseCategory" placeholder="食費">
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">記録する</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">支出を記録</button>
                 </form>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">最近の支出</h2>
+                    <h2 class="card-title">最近の取引</h2>
                 </div>
                 <div id="recentExpenses"></div>
             </div>
@@ -637,13 +664,67 @@
                     <label class="form-label">締め日</label>
                     <select class="form-select" id="closingDay" required>
                         <option value="month-end">月末</option>
-                        ${Array.from({length: 28}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}
+                        <option value="1">1日</option>
+                        <option value="2">2日</option>
+                        <option value="3">3日</option>
+                        <option value="4">4日</option>
+                        <option value="5">5日</option>
+                        <option value="6">6日</option>
+                        <option value="7">7日</option>
+                        <option value="8">8日</option>
+                        <option value="9">9日</option>
+                        <option value="10">10日</option>
+                        <option value="11">11日</option>
+                        <option value="12">12日</option>
+                        <option value="13">13日</option>
+                        <option value="14">14日</option>
+                        <option value="15">15日</option>
+                        <option value="16">16日</option>
+                        <option value="17">17日</option>
+                        <option value="18">18日</option>
+                        <option value="19">19日</option>
+                        <option value="20">20日</option>
+                        <option value="21">21日</option>
+                        <option value="22">22日</option>
+                        <option value="23">23日</option>
+                        <option value="24">24日</option>
+                        <option value="25">25日</option>
+                        <option value="26">26日</option>
+                        <option value="27">27日</option>
+                        <option value="28">28日</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">引き落とし日</label>
                     <select class="form-select" id="paymentDay" required>
-                        ${Array.from({length: 28}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}
+                        <option value="1">1日</option>
+                        <option value="2">2日</option>
+                        <option value="3">3日</option>
+                        <option value="4">4日</option>
+                        <option value="5">5日</option>
+                        <option value="6">6日</option>
+                        <option value="7">7日</option>
+                        <option value="8">8日</option>
+                        <option value="9">9日</option>
+                        <option value="10">10日</option>
+                        <option value="11">11日</option>
+                        <option value="12">12日</option>
+                        <option value="13">13日</option>
+                        <option value="14">14日</option>
+                        <option value="15">15日</option>
+                        <option value="16">16日</option>
+                        <option value="17">17日</option>
+                        <option value="18">18日</option>
+                        <option value="19">19日</option>
+                        <option value="20">20日</option>
+                        <option value="21">21日</option>
+                        <option value="22">22日</option>
+                        <option value="23">23日</option>
+                        <option value="24">24日</option>
+                        <option value="25">25日</option>
+                        <option value="26">26日</option>
+                        <option value="27">27日</option>
+                        <option value="28">28日</option>
                     </select>
                 </div>
                 <div class="form-group">
