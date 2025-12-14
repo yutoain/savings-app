@@ -424,9 +424,24 @@ class SavingsApp {
             .reduce((sum, e) => sum + e.amount, 0);
 
         // 全期間の収支から現在の残高を計算
+        // カード払いは引き落とし日まで残高に影響しないため、現金払いと実際に引き落とされた分のみ計算
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         const allIncome = this.incomes.reduce((sum, i) => sum + i.amount, 0);
-        const allExpenses = this.expenses.reduce((sum, e) => sum + e.amount, 0);
-        const currentBalance = allIncome - allExpenses;
+
+        // 現金払いの支出
+        const cashExpenses = this.expenses.filter(e => e.paymentMethod === 'cash')
+            .reduce((sum, e) => sum + e.amount, 0);
+
+        // カード払いで既に引き落とし済みの支出（引き落とし日が今日より前）
+        const withdrawnCardExpenses = this.expenses.filter(e => {
+            if (e.paymentMethod === 'cash' || !e.withdrawalDate) return false;
+            const withdrawalDate = new Date(e.withdrawalDate);
+            return withdrawalDate < today;
+        }).reduce((sum, e) => sum + e.amount, 0);
+
+        const currentBalance = allIncome - cashExpenses - withdrawnCardExpenses;
 
         // 次回の引き落とし額を計算（今日以降で最も近い引き落とし日）
         const nextWithdrawal = this.calculateNextWithdrawal();
