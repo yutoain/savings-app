@@ -62,6 +62,12 @@ class SavingsApp {
         document.getElementById('incomeForm').addEventListener('submit', (e) => this.saveIncome(e));
         document.getElementById('expenseForm').addEventListener('submit', (e) => this.saveExpense(e));
         document.getElementById('paymentMethod').addEventListener('change', (e) => this.updateWithdrawalDate(e.target.value));
+        document.getElementById('expenseDate').addEventListener('change', () => {
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            if (paymentMethod !== 'cash') {
+                this.updateWithdrawalDate(paymentMethod);
+            }
+        });
 
         // カレンダー
         document.getElementById('prevMonth').addEventListener('click', () => this.changeMonth(-1));
@@ -220,6 +226,7 @@ class SavingsApp {
         const month = date.getMonth();
         const day = date.getDate();
 
+        // 締め日を取得
         let closingDay;
         if (card.closingDay === 'month-end') {
             closingDay = new Date(year, month + 1, 0).getDate();
@@ -228,12 +235,14 @@ class SavingsApp {
         }
 
         // 締め日を過ぎているか判定
+        // 例: 15日締め → 1-15日の利用は翌月10日引き落とし、16-31日の利用は翌々月10日引き落とし
+        // 例: 月末締め → 1-31日の利用は翌月27日引き落とし
         let withdrawalDate;
         if (day <= closingDay) {
-            // 当月の引き落とし日
+            // 締め日以内 → 翌月の引き落とし日
             withdrawalDate = new Date(year, month + 1, card.paymentDay);
         } else {
-            // 翌月の引き落とし日
+            // 締め日を過ぎた → 翌々月の引き落とし日
             withdrawalDate = new Date(year, month + 2, card.paymentDay);
         }
 
@@ -654,14 +663,30 @@ class SavingsApp {
         // 日付
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+            // その日の支出・収入
             const hasExpense = this.expenses.some(e => e.date === dateStr);
+            const hasIncome = this.incomes.some(i => i.date === dateStr);
+
+            // その日の引き落とし予定
+            const withdrawals = this.expenses.filter(e => e.withdrawalDate === dateStr);
+            const hasWithdrawal = withdrawals.length > 0;
+
             const isToday = dateStr === new Date().toISOString().split('T')[0];
 
             const dayElement = document.createElement('div');
             dayElement.className = 'calendar-day';
-            if (hasExpense) dayElement.classList.add('has-expense');
+            if (hasExpense || hasIncome) dayElement.classList.add('has-expense');
             if (isToday) dayElement.classList.add('today');
-            dayElement.textContent = day;
+
+            // 日付とマーカーを表示
+            dayElement.innerHTML = `
+                <div style="font-weight: ${isToday ? '700' : '400'};">${day}</div>
+                ${hasWithdrawal ? '<div style="font-size: 10px; color: var(--danger); margin-top: 2px;">💳</div>' : ''}
+            `;
+            dayElement.style.flexDirection = 'column';
+            dayElement.style.gap = '0';
+
             dayElement.addEventListener('click', () => this.showDayExpenses(dateStr));
 
             calendar.appendChild(dayElement);
@@ -678,19 +703,47 @@ class SavingsApp {
     showDayExpenses(dateStr) {
         this.selectedDate = new Date(dateStr);
         const container = document.getElementById('dayExpenses');
+
+        // その日の支出
         const dayExpenses = this.expenses.filter(e => e.date === dateStr);
 
-        if (dayExpenses.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📝</div><div>${dateStr}<br>支出データなし</div></div>`;
+        // その日の収入
+        const dayIncomes = this.incomes.filter(i => i.date === dateStr);
+
+        // その日の引き落とし予定
+        const dayWithdrawals = this.expenses.filter(e => e.withdrawalDate === dateStr);
+
+        if (dayExpenses.length === 0 && dayIncomes.length === 0 && dayWithdrawals.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📝</div><div>${dateStr}<br>データなし</div></div>`;
             return;
         }
 
-        container.innerHTML = `
-            <div style="font-weight: 600; margin-bottom: 12px;">${dateStr}</div>
-            ${dayExpenses.map(expense => {
+        let html = `<div style="font-weight: 600; margin-bottom: 12px;">${dateStr}</div>`;
+
+        // 収入を表示
+        if (dayIncomes.length > 0) {
+            html += `<div style="font-weight: 600; margin-top: 16px; margin-bottom: 8px; color: var(--success);">📈 収入</div>`;
+            dayIncomes.forEach(income => {
+                html += `
+                    <div class="expense-item" style="border-left: 3px solid var(--success);">
+                        <div>
+                            <div style="font-weight: 600;">${income.source}</div>
+                        </div>
+                        <div class="expense-amount success" style="color: var(--success);">
+                            +¥${income.amount.toLocaleString()}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // 支出を表示
+        if (dayExpenses.length > 0) {
+            html += `<div style="font-weight: 600; margin-top: 16px; margin-bottom: 8px; color: var(--danger);">📉 支出</div>`;
+            dayExpenses.forEach(expense => {
                 const card = expense.paymentMethod === 'cash' ? null : this.cards.find(c => c.id === expense.paymentMethod);
-                return `
-                    <div class="expense-item">
+                html += `
+                    <div class="expense-item" style="border-left: 3px solid var(--danger);">
                         <div>
                             <div style="font-weight: 600;">${expense.category}</div>
                             <div style="font-size: 14px; color: var(--text-secondary);">
@@ -699,15 +752,85 @@ class SavingsApp {
                             </div>
                         </div>
                         <div class="expense-amount ${card ? 'card' : 'cash'}">
-                            ¥${expense.amount.toLocaleString()}
+                            -¥${expense.amount.toLocaleString()}
                         </div>
                     </div>
                 `;
-            }).join('')}
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); text-align: right; font-weight: 700;">
-                合計: ¥${dayExpenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
-            </div>
-        `;
+            });
+        }
+
+        // 引き落とし予定を表示
+        if (dayWithdrawals.length > 0) {
+            html += `<div style="font-weight: 600; margin-top: 16px; margin-bottom: 8px; color: var(--warning);">💳 引き落とし予定</div>`;
+
+            // カード別に集計
+            const withdrawalsByCard = {};
+            dayWithdrawals.forEach(expense => {
+                const card = this.cards.find(c => c.id === expense.paymentMethod);
+                if (card) {
+                    if (!withdrawalsByCard[card.id]) {
+                        withdrawalsByCard[card.id] = {
+                            card: card,
+                            expenses: [],
+                            total: 0
+                        };
+                    }
+                    withdrawalsByCard[card.id].expenses.push(expense);
+                    withdrawalsByCard[card.id].total += expense.amount;
+                }
+            });
+
+            Object.values(withdrawalsByCard).forEach(item => {
+                html += `
+                    <div class="expense-item" style="border-left: 3px solid ${item.card.color}; background: ${item.card.color}10;">
+                        <div>
+                            <div style="font-weight: 600; color: ${item.card.color};">${item.card.name}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                                ${item.expenses.map(e => `${e.category} ¥${e.amount.toLocaleString()} (${e.date})`).join('<br>')}
+                            </div>
+                        </div>
+                        <div style="font-size: 20px; font-weight: 700; color: ${item.card.color};">
+                            ¥${item.total.toLocaleString()}
+                        </div>
+                    </div>
+                `;
+            });
+
+            const totalWithdrawal = Object.values(withdrawalsByCard).reduce((sum, item) => sum + item.total, 0);
+            html += `
+                <div style="margin-top: 12px; padding: 12px; background: var(--warning)20; border-radius: 8px; text-align: right; font-weight: 700; color: var(--warning);">
+                    引き落とし合計: ¥${totalWithdrawal.toLocaleString()}
+                </div>
+            `;
+        }
+
+        // 収支合計
+        const totalIncome = dayIncomes.reduce((sum, i) => sum + i.amount, 0);
+        const totalExpense = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const netAmount = totalIncome - totalExpense;
+
+        if (dayIncomes.length > 0 || dayExpenses.length > 0) {
+            html += `
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>収入:</span>
+                        <span style="color: var(--success);">+¥${totalIncome.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>支出:</span>
+                        <span style="color: var(--danger);">-¥${totalExpense.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; padding-top: 8px; border-top: 1px solid var(--border);">
+                        <span>差引:</span>
+                        <span style="color: ${netAmount >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                            ${netAmount >= 0 ? '+' : ''}¥${netAmount.toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
     }
 
     // 目標管理
