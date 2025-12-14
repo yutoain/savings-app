@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>貯金管理アプリ</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg: #F9FAFB;
+            --card-bg: #FFFFFF;
+            --text: #111827;
+            --text-secondary: #6B7280;
+            --border: #E5E7EB;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg: #111827;
+            --card-bg: #1F2937;
+            --text: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --border: #374151;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 80px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: var(--primary-dark);
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--card-bg);
+            color: var(--text);
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-value.danger {
+            color: var(--danger);
+        }
+
+        .stat-value.success {
+            color: var(--success);
+        }
+
+        .card-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .expense-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expense-amount {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .expense-amount.cash {
+            color: var(--success);
+        }
+
+        .expense-amount.card {
+            color: var(--warning);
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-top: 12px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .calendar-day.has-expense {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .calendar-day.today {
+            border: 2px solid var(--primary);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 12px;
+            border: none;
+            background: none;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .alert-warning {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .alert-danger {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        .chart-container {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        .withdrawal-schedule {
+            margin-top: 16px;
+        }
+
+        .withdrawal-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .delete-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>💰 貯金管理</h1>
+        <button class="theme-toggle" id="themeToggle">🌙</button>
+    </div>
+
+    <div class="container">
+        <!-- ダッシュボードページ -->
+        <div id="dashboard" class="page active">
+            <div id="motivationMessage" class="alert alert-success" style="display: none;"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">今月の現金支出</div>
+                    <div class="stat-value" id="cashSpent">¥0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">今月のカード利用</div>
+                    <div class="stat-value danger" id="cardSpent">¥0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">次回引き落とし</div>
+                    <div class="stat-value danger" id="nextWithdrawal">¥0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">引き落とし後残高</div>
+                    <div class="stat-value success" id="afterBalance">¥0</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">カード別使用状況</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cardChart" width="300" height="300"></canvas>
+                </div>
+                <div id="cardUsageList"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">今後の引き落としスケジュール</h2>
+                </div>
+                <div id="withdrawalSchedule" class="withdrawal-schedule"></div>
+            </div>
+        </div>
+
+        <!-- 支出入力ページ -->
+        <div id="expense" class="page">
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 20px;">支出を入力</h2>
+                <form id="expenseForm">
+                    <div class="form-group">
+                        <label class="form-label">金額</label>
+                        <input type="number" class="form-input" id="expenseAmount" required placeholder="1000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">日付</label>
+                        <input type="date" class="form-input" id="expenseDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">支払い方法</label>
+                        <select class="form-select" id="paymentMethod" required>
+                            <option value="cash">現金</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="withdrawalDateGroup" style="display: none;">
+                        <label class="form-label">引き落とし日</label>
+                        <input type="date" class="form-input" id="withdrawalDate" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">カテゴリ（任意）</label>
+                        <input type="text" class="form-input" id="expenseCategory" placeholder="食費">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">記録する</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">最近の支出</h2>
+                </div>
+                <div id="recentExpenses"></div>
+            </div>
+        </div>
+
+        <!-- カレンダーページ -->
+        <div id="calendarPage" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="calendarMonth"></h2>
+                    <div>
+                        <button class="btn btn-small btn-secondary" id="prevMonth">←</button>
+                        <button class="btn btn-small btn-secondary" id="nextMonth">→</button>
+                    </div>
+                </div>
+                <div class="calendar" id="calendar"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 16px;">選択日の支出</h2>
+                <div id="dayExpenses"></div>
+            </div>
+        </div>
+
+        <!-- 目標ページ -->
+        <div id="goalPage" class="page">
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 20px;">貯金目標</h2>
+                <form id="goalForm">
+                    <div class="form-group">
+                        <label class="form-label">目標金額</label>
+                        <input type="number" class="form-input" id="goalAmount" required placeholder="100000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">現在の貯金額</label>
+                        <input type="number" class="form-input" id="currentSavings" required placeholder="50000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">目標期限</label>
+                        <input type="date" class="form-input" id="goalDeadline" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">目標を設定</button>
+                </form>
+            </div>
+
+            <div class="card" id="goalProgress" style="display: none;">
+                <h2 class="card-title" style="margin-bottom: 16px;">進捗状況</h2>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="goalStats" style="margin-top: 16px;"></div>
+            </div>
+        </div>
+
+        <!-- 設定ページ -->
+        <div id="settings" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">カード管理</h2>
+                    <button class="btn btn-small btn-primary" id="addCardBtn">追加</button>
+                </div>
+                <div id="cardsList"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 16px;">通知設定</h2>
+                <div class="form-group">
+                    <label class="form-label">毎朝の予算通知</label>
+                    <select class="form-select" id="notificationTime">
+                        <option value="08:00">08:00</option>
+                        <option value="09:00">09:00</option>
+                        <option value="10:00">10:00</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="enableNotifications" style="width: 100%;">通知を有効にする</button>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title" style="margin-bottom: 16px;">データ管理</h2>
+                <button class="btn btn-secondary" id="exportData" style="width: 100%; margin-bottom: 12px;">データをエクスポート</button>
+                <button class="btn btn-secondary" id="importData" style="width: 100%;">データをインポート</button>
+                <input type="file" id="importFile" style="display: none;" accept=".json">
+            </div>
+        </div>
+    </div>
+
+    <!-- カード追加/編集モーダル -->
+    <div class="modal" id="cardModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">カード情報</h2>
+                <button class="close-btn" id="closeCardModal">×</button>
+            </div>
+            <form id="cardForm">
+                <div class="form-group">
+                    <label class="form-label">カード名</label>
+                    <input type="text" class="form-input" id="cardName" required placeholder="楽天カード">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">締め日</label>
+                    <select class="form-select" id="closingDay" required>
+                        <option value="month-end">月末</option>
+                        ${Array.from({length: 28}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">引き落とし日</label>
+                    <select class="form-select" id="paymentDay" required>
+                        ${Array.from({length: 28}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">カラー</label>
+                    <input type="color" class="form-input" id="cardColor" value="#4F46E5">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ボトムナビゲーション -->
+    <div class="bottom-nav">
+        <button class="nav-item active" data-page="dashboard">
+            <div class="nav-icon">📊</div>
+            <div>ホーム</div>
+        </button>
+        <button class="nav-item" data-page="expense">
+            <div class="nav-icon">💸</div>
+            <div>支出</div>
+        </button>
+        <button class="nav-item" data-page="calendarPage">
+            <div class="nav-icon">📅</div>
+            <div>カレンダー</div>
+        </button>
+        <button class="nav-item" data-page="goalPage">
+            <div class="nav-icon">🎯</div>
+            <div>目標</div>
+        </button>
+        <button class="nav-item" data-page="settings">
+            <div class="nav-icon">⚙️</div>
+            <div>設定</div>
+        </button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

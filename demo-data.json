@@ -1,0 +1,78 @@
+{
+  "cards": [
+    {
+      "id": "card_1",
+      "name": "楽天カード",
+      "closingDay": "month-end",
+      "paymentDay": 27,
+      "color": "#EF4444"
+    },
+    {
+      "id": "card_2",
+      "name": "三井住友カード",
+      "closingDay": "15",
+      "paymentDay": 10,
+      "color": "#10B981"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "expense_1",
+      "date": "2024-12-01",
+      "amount": 3000,
+      "paymentMethod": "cash",
+      "category": "食費",
+      "withdrawalDate": null
+    },
+    {
+      "id": "expense_2",
+      "date": "2024-12-05",
+      "amount": 5000,
+      "paymentMethod": "card_1",
+      "category": "交通費",
+      "withdrawalDate": "2025-01-27"
+    },
+    {
+      "id": "expense_3",
+      "date": "2024-12-08",
+      "amount": 2000,
+      "paymentMethod": "cash",
+      "category": "食費",
+      "withdrawalDate": null
+    },
+    {
+      "id": "expense_4",
+      "date": "2024-12-10",
+      "amount": 8000,
+      "paymentMethod": "card_2",
+      "category": "買い物",
+      "withdrawalDate": "2025-01-10"
+    },
+    {
+      "id": "expense_5",
+      "date": "2024-12-12",
+      "amount": 1500,
+      "paymentMethod": "cash",
+      "category": "食費",
+      "withdrawalDate": null
+    },
+    {
+      "id": "expense_6",
+      "date": "2024-12-14",
+      "amount": 12000,
+      "paymentMethod": "card_1",
+      "category": "食費",
+      "withdrawalDate": "2025-01-27"
+    }
+  ],
+  "goal": {
+    "amount": 100000,
+    "currentSavings": 50000,
+    "deadline": "2025-06-30"
+  },
+  "settings": {
+    "theme": "light",
+    "notificationTime": "08:00"
+  },
+  "exportDate": "2024-12-14T00:00:00.000Z"
+}
